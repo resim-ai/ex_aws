@@ -2940,6 +2940,27 @@ chime_voice_regions = [
             "us-west-1" => %{},
             "us-west-2" => %{}
           }
+        },
+        "emr-serverless" => %{
+          "defaults" => %{
+            "protocols" => ["https"],
+            "signatureVersions" => ["v4"],
+            "credentialScope" => %{
+              "service" => "emr-serverless"
+            }
+          },
+          "endpoints" => %{
+            "us-east-1" => %{"hostname" => "emr-serverless.us-east-1.amazonaws.com"},
+            "us-east-2" => %{"hostname" => "emr-serverless.us-east-2.amazonaws.com"},
+            "us-west-2" => %{"hostname" => "emr-serverless.us-west-2.amazonaws.com"},
+            "ap-northeast-1" => %{"hostname" => "emr-serverless.ap-northeast-1.amazonaws.com"},
+            "ap-northeast-2" => %{"hostname" => "emr-serverless.ap-northeast-2.amazonaws.com"},
+            "ap-south-1" => %{"hostname" => "emr-serverless.ap-south-1.amazonaws.com"},
+            "ap-southeast-1" => %{"hostname" => "emr-serverless.ap-southeast-1.amazonaws.com"},
+            "ap-southeast-2" => %{"hostname" => "emr-serverless.ap-southeast-2.amazonaws.com"},
+            "eu-west-1" => %{"hostname" => "emr-serverless.eu-west-1.amazonaws.com"},
+            "eu-central-1" => %{"hostname" => "emr-serverless.eu-central-1.amazonaws.com"}
+          }
         }
       }
     },
@@ -3066,7 +3087,14 @@ chime_voice_regions = [
         "cognito-identity" => %{"endpoints" => %{"cn-north-1" => %{}}},
         "directconnect" => %{"endpoints" => %{"cn-north-1" => %{}, "cn-northwest-1" => %{}}},
         "cloudformation" => %{"endpoints" => %{"cn-north-1" => %{}, "cn-northwest-1" => %{}}},
-        "swf" => %{"endpoints" => %{"cn-north-1" => %{}, "cn-northwest-1" => %{}}}
+        "swf" => %{"endpoints" => %{"cn-north-1" => %{}, "cn-northwest-1" => %{}}},
+        "emr-serverless" => %{
+          "defaults" => %{"signatureVersions" => ["v4"]},
+          "endpoints" => %{
+            "cn-north-1" => %{"hostname" => "emr-serverless.cn-north-1.amazonaws.com.cn"},
+            "cn-northwest-1" => %{"hostname" => "emr-serverless.cn-northwest-1.amazonaws.com.cn"}
+          }
+        }
       }
     },
     %{
@@ -3282,6 +3310,13 @@ chime_voice_regions = [
           "endpoints" => %{
             "us-gov-east-1" => %{},
             "us-gov-west-1" => %{}
+          }
+        },
+        "emr-serverless" => %{
+          "defaults" => %{"signatureVersions" => ["v4"]},
+          "endpoints" => %{
+            "us-gov-east-1" => %{"hostname" => "emr-serverless.us-gov-east-1.amazonaws.com"},
+            "us-gov-west-1" => %{"hostname" => "emr-serverless.us-gov-west-1.amazonaws.com"}
           }
         }
       }
