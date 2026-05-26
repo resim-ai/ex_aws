@@ -1,0 +1,61 @@
+---
+name: Renovate
+
+# Self-hosted Renovate. Replaces the Mend Cloud Renovate App for this repo.
+#
+# Cadence:
+#   - Hourly cron picks up new Dependabot vulnerability alerts within ~1h.
+#     vulnerabilityAlerts is configured with `schedule: at any time` in
+#     renovate.json, so security PRs open on the first run after the alert.
+#   - Regular grouped updates are gated by the top-level
+#     `schedule: before 5am on monday` in renovate.json, so the other 167
+#     hourly runs each week are effectively no-ops for non-security work.
+#   - workflow_dispatch lets a human (or `gh workflow run`) trigger immediately.
+
+on:
+  schedule:
+    - cron: 15 * * * *
+  workflow_dispatch:
+    inputs:
+      log-level:
+        description: Renovate log level
+        type: choice
+        default: info
+        options: [debug, info, warn, error]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: gha-small
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Generate Renovate app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+          owner: resim-ai
+          repositories: |
+            ex_aws
+
+      - name: Renovate
+        uses: renovatebot/github-action@693b9ef15eec82123529a37c782242f091365961 # v46.1.14
+        with:
+          configurationFile: renovate.json
+          token: ${{ steps.app-token.outputs.token }}
+          docker-volumes: |
+            ${{ runner.temp }}/hex-data:/home/ubuntu/.hex
+        env:
+          LOG_LEVEL: ${{ inputs.log-level || 'info' }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_PLATFORM: github
+          RENOVATE_AUTODISCOVER: 'false'
