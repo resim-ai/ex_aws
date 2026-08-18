@@ -1,0 +1,131 @@
+---
+name: Upstream Sync
+
+# Weekly PR that brings this fork up to date with the repo it was forked from:
+# https://github.com/ex-aws/ex_aws
+#
+# How it works:
+#   - The `upstream-sync` branch is force-created to mirror `upstream/main`.
+#   - A PR is opened from `upstream-sync` into `main`. GitHub shows the diff of
+#     everything new upstream since the fork point and computes mergeability.
+#   - A human reviews and merges. Merging with a MERGE COMMIT (not squash/rebase)
+#     preserves this fork's own commits -- e.g. the reverted hackney 4.0 bump and
+#     the extra endpoints -- and surfaces any real conflicts for manual fixup.
+#   - If a sync PR is already open, the run does nothing, so in-progress conflict
+#     resolution on the branch is never clobbered.
+#
+# Uses the same self-hosted Renovate GitHub App as renovate.yml. That matters:
+# PRs opened with an app token trigger CI (on-push.yml), whereas the built-in
+# GITHUB_TOKEN would not.
+
+on:
+  schedule:
+    - cron: 0 6 * * 1 # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: https://github.com/ex-aws/ex_aws.git
+  UPSTREAM_BRANCH: main
+  DEFAULT_BRANCH: main
+  SYNC_BRANCH: upstream-sync
+
+jobs:
+  sync:
+    runs-on: gha-small
+    steps:
+      - name: Generate Renovate app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+          owner: resim-ai
+          repositories: |
+            ex_aws
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Check for an existing sync PR
+        id: existing
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: process.env.DEFAULT_BRANCH,
+              head: `${context.repo.owner}:${process.env.SYNC_BRANCH}`,
+            });
+            const open = prs.length > 0;
+            if (open) {
+              core.info(`Sync PR already open: #${prs[0].number} (${prs[0].html_url}). Leaving the branch untouched.`);
+            }
+            core.setOutput('open', String(open));
+
+      - name: Mirror upstream into the sync branch
+        id: mirror
+        if: steps.existing.outputs.open != 'true'
+        run: |
+          set -euo pipefail
+          git remote add upstream "$UPSTREAM_REPO"
+          git fetch upstream
+
+          behind=$(git rev-list --count "origin/${DEFAULT_BRANCH}..upstream/${UPSTREAM_BRANCH}")
+          echo "behind=${behind}" >> "$GITHUB_OUTPUT"
+          if [ "$behind" -eq 0 ]; then
+            echo "Fork is already up to date with upstream/${UPSTREAM_BRANCH}."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Fork is ${behind} commit(s) behind upstream/${UPSTREAM_BRANCH}; updating ${SYNC_BRANCH}."
+
+          # Mirror upstream exactly; no local commit is created, so no conflict
+          # can arise here. The merge (and any conflicts) happen when the PR is
+          # merged, with a human in the loop.
+          git checkout -B "$SYNC_BRANCH" "upstream/${UPSTREAM_BRANCH}"
+          git push --force origin "$SYNC_BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open the sync PR
+        if: steps.mirror.outputs.pushed == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          BEHIND: ${{ steps.mirror.outputs.behind }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const behind = process.env.BEHIND;
+            const plural = behind === '1' ? '' : 's';
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: process.env.DEFAULT_BRANCH,
+              head: process.env.SYNC_BRANCH,
+              title: `Sync fork with upstream ex-aws/ex_aws (${behind} commit${plural} behind)`,
+              body: [
+                'Automated weekly sync with the upstream repo this fork tracks:',
+                'https://github.com/ex-aws/ex_aws',
+                '',
+                `\`${process.env.SYNC_BRANCH}\` mirrors \`upstream/${process.env.UPSTREAM_BRANCH}\`. The diff below is everything new upstream since the fork point (${behind} commit${plural}).`,
+                '',
+                '**Merge with a merge commit** (not squash or rebase) so this fork’s own commits are preserved — e.g. the reverted hackney 4.0 bump and the extra endpoints.',
+                '',
+                'If GitHub reports conflicts, resolve them in the web editor or locally before merging. While this PR stays open, the weekly job leaves the branch alone.',
+                '',
+                '_Opened by the `Upstream Sync` workflow._',
+              ].join('\n'),
+            });
+            core.info(`Opened sync PR #${pr.number}: ${pr.html_url}`);
