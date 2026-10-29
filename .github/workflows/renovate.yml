@@ -33,6 +33,11 @@ concurrency:
 jobs:
   renovate:
     runs-on: gha-small
+    # The Renovate App's key is a secret of the renovate environment, which only
+    # main may use, so a workflow on any other branch can't read it.
+    environment:
+      name: renovate
+      deployment: false
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
