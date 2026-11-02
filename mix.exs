@@ -43,14 +43,14 @@ defmodule ExAws.Mixfile do
       {:bypass, "~> 2.1", only: :test},
       {:configparser_ex, "~> 4.0", optional: true},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.16", only: [:dev, :test]},
-      {:hackney, "~> 4.0", optional: true},
-      {:req, "~> 0.3", optional: true},
+      {:ex_doc, "~> 0.40", only: [:dev, :test]},
+      {:hackney, "~> 1.25", optional: true},
+      {:req, "~> 0.7", optional: true},
       {:jason, "~> 1.1", optional: true},
       {:jsx, "~> 2.8 or ~> 3.0", optional: true},
       {:mox, "~> 1.0", only: :test},
       {:sweet_xml, "~> 0.7", optional: true},
-      {:excoveralls, "~> 0.10", only: :test}
+      {:excoveralls, "~> 0.18", only: :test}
     ]
   end
 
